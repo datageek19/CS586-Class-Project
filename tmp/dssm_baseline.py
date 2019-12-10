@@ -7,13 +7,12 @@ import matplotlib.pyplot as plt
 from collections import Counter, defaultdict
 from tqdm import tqdm
 
-
 # Initialization
 rng = np.random
 
 # Parameters
 learning_rate = 0.001
-training_epochs = 1000
+training_epochs = 50
 display_step = 5
 
 # Network Parameters
@@ -30,8 +29,7 @@ half_window = round((window_size - 1) / 2)
 num_skips = 2
 words_per_batch = round(batch_size / num_skips)
 
-
-# Model itself
+# Model configuration
 layer_input = tf.placeholder("float", [batch_size, tot_vocab], "layer_input")
 layer_output_nums = tf.placeholder(tf.int32, [batch_size, positive_samples], "layer_output")
 
@@ -39,7 +37,6 @@ w_l1 = tf.Variable(tf.random_normal([tot_vocab, num_hiddenLay_1]))
 w_l1_bias = tf.Variable(tf.random_normal([num_hiddenLay_1]))
 layer_1_sum = tf.add(tf.matmul(layer_input, w_l1), w_l1_bias)
 layer_1 = tf.nn.relu(layer_1_sum)
-
 
 w_l2 = tf.Variable(tf.random_normal([num_hiddenLay_1, num_hiddenLay_2]))
 w_l2_bias = tf.Variable(tf.random_normal([num_hiddenLay_2]))
@@ -74,11 +71,12 @@ def load_vocab(file_path):
     return word_dict
 
 ## get words
-vocab_outputView=load_vocab(file_path="./data/oppo_round1_train_20180929.txt")
+vocab_outputView=load_vocab(file_path="./data/train.pair_tok.tsv")
 
 ## to see partial view of word dictionary
 res= dict(list(vocab_outputView.items())[0:5])
 print(res)
+
 
 ## get words
 def gen_word_set(file_path):
@@ -101,9 +99,10 @@ def gen_word_set(file_path):
     return list(word_set)
 
 ##
-file_vali = './data/oppo_round1_vali_20180929.txt'
+file_vali = './data/train.pair_tok.tsv'
 chi_wordset= gen_word_set(file_path=file_vali)
-
+print(chi_wordset)
+'''
 def explode_word(word):
     w = "#" + word + "#"
     for i in range(0, len(w)-3+1):
@@ -127,22 +126,18 @@ def generate_batch():
     buffer_x = [] # batch_size X vocab_size
     buffer_y = [] # batch_size X positive_samples
     for _ in range(words_per_batch):
-        # Filling in this particular x
         x = [0] * tot_vocab
         words = chi_wordset[data_index + half_window]
         trigram = word2tri(words)
 
         for i in range(len(trigram)):
             x[i] = 1
-        
-        # And sampling several y's:
         for _ in range(num_skips):
             y = [0] * positive_samples
             
             sample_word = rng.randint(-half_window, half_window - 1)
             if half_window >= 0: 
                 sample_word += 1 # No zeroes allowed!
-            
             sample_tris = list(word2tri(chi_wordset[data_index + half_window + sample_word]))
             for i, k in enumerate(rng.choice(sample_tris, positive_samples)):
                 y[i] = k
@@ -178,4 +173,4 @@ with tf.Session() as sess:
 #             print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(np.mean(np.array(cc))))
 
 
-
+'''
