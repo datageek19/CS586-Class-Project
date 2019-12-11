@@ -148,15 +148,24 @@ with tf.name_scope('Training'):
 #     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 #     tf.summary.scalar('accuracy', accuracy)
 
+with tf.name_scope('Accuracy'):
+    accuracy = tf.reduce_mean(tf.cast(cross_entropy, tf.float32))
+    tf.summary.scalar('accuracy', accuracy)
+
 merged = tf.summary.merge_all()
 
 with tf.name_scope('Test'):
-    average_loss = tf.placeholder(tf.float32)
-    loss_summary = tf.summary.scalar('average_loss', average_loss)
+    test_average_loss = tf.placeholder(tf.float32)
+    test_avg_accuracy = tf.placeholder(tf.float32)
+    loss_summary = tf.summary.scalar('test_average_loss', test_average_loss)
+    test_accuracy_summary = tf.summary.scalar('test_avg_accuracy', test_avg_accuracy)
+
 
 with tf.name_scope('Train'):
     train_average_loss = tf.placeholder(tf.float32)
+    train_avg_accuracy = tf.placeholder(tf.float32)
     train_loss_summary = tf.summary.scalar('train_average_loss', train_average_loss)
+    train_accuracy_summary = tf.summary.scalar('train_avg_accuracy', train_avg_accuracy)
 
 
 def pull_batch(data_map, batch_id):
@@ -179,6 +188,7 @@ def feed_dict(on_training, data_set, batch_id, drop_prob):
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     train_writer = tf.summary.FileWriter(summaries_dir + '/train_rnn', sess.graph)
+    test_writer = tf.summary.FileWriter(summaries_dir+'/test_rnn', sess.graph)
 
     start = time.time()
     for epoch in range(num_epoch):
@@ -193,8 +203,8 @@ with tf.Session() as sess:
             epoch_loss += loss_v
 
         epoch_loss /= (train_epoch_steps)
-        train_loss = sess.run(train_loss_summary, feed_dict={train_average_loss: epoch_loss})
-        train_writer.add_summary(train_loss, epoch + 1)
+        train_loss_ = sess.run(train_loss_summary, feed_dict={train_average_loss: epoch_loss})
+        train_writer.add_summary(train_loss_, epoch + 1)
         print("\nEpoch #%d | Train Loss: %-4.3f | PureTrainTime: %-3.3fs" %
               (epoch, epoch_loss, end - start))
 
@@ -205,8 +215,30 @@ with tf.Session() as sess:
             loss_v = sess.run(losses, feed_dict=feed_dict(False, data_vali, i, 1))
             epoch_loss += loss_v
         epoch_loss /= (vali_epoch_steps)
-        test_loss = sess.run(loss_summary, feed_dict={average_loss: epoch_loss})
-        train_writer.add_summary(test_loss, epoch + 1)
+        test_loss_ = sess.run(loss_summary, feed_dict={test_average_loss: epoch_loss})
+        train_writer.add_summary(test_loss_, epoch + 1)
         # test_writer.add_summary(test_loss, step + 1)
         print("Epoch #%d | Test  Loss: %-4.3f | Calc_LossTime: %-3.3fs" %
               (epoch, epoch_loss, start - end))
+
+        ## train accuracy
+        epoch_train_accu = 0
+        for i in range(train_epoch_steps):
+            train_accu_val = sess.run(accuracy, feed_dict=feed_dict(False, data_train, i, 1))
+            epoch_train_accu += train_accu_val
+        epoch_train_accu /= (train_epoch_steps)
+        train_accuracy_ = sess.run(train_accuracy_summary, feed_dict={train_avg_accuracy: epoch_train_accu})
+        train_writer.add_summary(train_accuracy_, epoch + 1)
+        print("\nEpoch #%d | Train accuracy: %-4.3f " % (epoch, epoch_train_accu))
+
+        ## test accuracy
+        epoch_test_accu = 0
+        for i in range(vali_epoch_steps):
+            test_accu_val = sess.run(accuracy, feed_dict=feed_dict(False, data_vali, i, 1))
+            epoch_test_accu += test_accu_val
+        epoch_test_accu /= (vali_epoch_steps)
+        test_accuracy = sess.run(test_accuracy_summary, feed_dict={test_avg_accuracy: epoch_test_accu})
+        test_writer.add_summary(test_accuracy, epoch + 1)
+        print("\nEpoch #%d | Test accuracy: %-4.3f " % (epoch, epoch_test_accu))
+
+        
